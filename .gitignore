@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.python-version
+
+# Environment and secrets
+.env
+*.key
+
+# OS
+.DS_Store
+
+# Raw evidence and local lab outputs (never commit real-system data)
+evidence/
+*.nmap
+*.xml.raw
