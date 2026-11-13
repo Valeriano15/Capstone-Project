@@ -1,0 +1,7 @@
+# MCP config contains the msfrpcd password
+.mcp.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]

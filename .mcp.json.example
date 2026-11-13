@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "metasploit": {
+      "type": "stdio",
+      "command": "C:\\Users\\valna\\Desktop\\capstone\\mcp\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\valna\\Desktop\\capstone\\server.py"
+      ],
+      "env": {
+        "MSF_HOST": "192.168.56.10",
+        "MSF_PORT": "55553",
+        "MSF_USERNAME": "msf",
+        "MSF_PASSWORD": "REPLACE_WITH_RPC_PASSWORD",
+        "MSF_SSL": "true",
+        "MSF_ALLOWED_TARGETS": "192.168.56.0/24",
+        "MSF_ALLOWED_MODULE_PREFIXES": "scanner/,gather/,analyze/"
+      }
+    }
+  }
+}
