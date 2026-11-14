@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MCP config contains the msfrpcd password
 .mcp.json
 
@@ -5,3 +6,23 @@
 .venv/
 __pycache__/
 *.py[cod]
+=======
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.python-version
+
+# Environment and secrets
+.env
+*.key
+
+# OS
+.DS_Store
+
+# Raw evidence and local lab outputs (never commit real-system data)
+evidence/
+*.nmap
+*.xml.raw
+>>>>>>> 828d3fca63d0fa51a90ffcb9a4ccc8e877866bd8
