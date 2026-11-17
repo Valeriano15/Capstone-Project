@@ -203,5 +203,31 @@ class RunModuleTests(unittest.TestCase):
         self.assertFalse(self.module.executed)
 
 
+class WorkspaceNamesTests(unittest.TestCase):
+    def test_list_of_workspace_dicts(self):
+        # Real msfrpcd shape: {'workspaces': [{'name': 'default', ...}, ...]}
+        self.assertEqual(
+            msf._workspace_names([{"name": "default"}, {"name": "lab"}]),
+            ["default", "lab"],
+        )
+
+    def test_list_of_name_strings(self):
+        # Older mock shape tolerated for robustness.
+        self.assertEqual(
+            msf._workspace_names(["default", "lab"]), ["default", "lab"]
+        )
+
+    def test_dict_mapping_names_to_objects(self):
+        self.assertEqual(
+            msf._workspace_names({"default": object(), "lab": object()}),
+            ["default", "lab"],
+        )
+
+    def test_empty_and_invalid_shapes(self):
+        self.assertEqual(msf._workspace_names(None), [])
+        self.assertEqual(msf._workspace_names([]), [])
+        self.assertEqual(msf._workspace_names([{"id": 1}, 3, "", " "]), [])
+
+
 if __name__ == "__main__":
     unittest.main()

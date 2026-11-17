@@ -692,6 +692,29 @@ def stop_job(job_id: int) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _workspace_names(raw: Any) -> list[str]:
+    """Extract workspace names from a db.workspaces response.
+
+    pymetasploit3 returns ``{'workspaces': [{'name': 'default', ...}, ...]}``
+    here (a list of dicts). Also tolerate a plain list of name strings or a
+    dict mapping names to workspace objects.
+    """
+    if isinstance(raw, dict):
+        # Legacy shape: {name: Workspace, ...} — names are the keys.
+        raw = list(raw.keys())
+    if not isinstance(raw, list):
+        return []
+    names: list[str] = []
+    for entry in raw:
+        if isinstance(entry, dict):
+            name = entry.get("name")
+            if isinstance(name, str) and name.strip():
+                names.append(name)
+        elif isinstance(entry, str) and entry.strip():
+            names.append(entry)
+    return names
+
+
 def db_records(
     kind: str,
     workspace: str = "default",
@@ -710,9 +733,12 @@ def db_records(
     workspace = (workspace or "default").strip() or "default"
 
     def operation(client: MsfRpcClient):
-        workspaces = client.db.workspaces.list
-        if workspace not in workspaces:
-            available = ", ".join(workspaces) if workspaces else "(none)"
+        # pymetasploit3's db.workspaces returns {'workspaces': [{'name': ...}]},
+        # a list of dicts, not a list of names. Normalize it (also tolerate the
+        # older dict-of-workspaces shape and plain name strings).
+        names = _workspace_names(client.db.workspaces.list)
+        if workspace not in names:
+            available = ", ".join(names) if names else "(none)"
             raise MsfToolError(
                 f"Workspace '{workspace}' not found. Available workspaces: {available}"
             )
@@ -743,6 +769,60 @@ def db_records(
     }
 
 
+def exploit_availability(cve: str) -> dict[str, Any]:
+    """Check which Metasploit modules reference a CVE (read-only).
+
+    Searching module metadata is an intelligence lookup: exploit modules are
+    listed for awareness but are never runnable through this server.
+    """
+    cve_id = (cve or "").strip().upper()
+    if not re.fullmatch(r"CVE-\d{4}-\d{4,7}", cve_id):
+        raise MsfToolError("cve must look like CVE-YYYY-NNNN (e.g. CVE-2021-44228).")
+
+    def operation(client: MsfRpcClient):
+        raw = client.modules.search(cve_id)
+        if isinstance(raw, dict):
+            raw = raw.get("modules", [])
+        return raw
+
+    raw = _rpc(operation)
+    if not isinstance(raw, list):
+        raise MsfToolError(f"Unexpected module.search response: {type(raw).__name__}")
+
+    exploits: list[dict[str, Any]] = []
+    auxiliary: list[dict[str, Any]] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        fullname = entry.get("fullname") or entry.get("name") or ""
+        module_type = entry.get("type")
+        item: dict[str, Any] = {
+            "module": fullname,
+            "rank": entry.get("rank"),
+            "disclosure_date": entry.get("disclosuredate"),
+        }
+        if module_type == "exploit":
+            exploits.append(item)
+        elif module_type == "auxiliary":
+            item["runnable_in_scope"] = is_module_allowed(fullname)
+            auxiliary.append(item)
+
+    exploits.sort(key=lambda m: (m["rank"] or "", m["module"]))
+    auxiliary.sort(key=lambda m: (not m["runnable_in_scope"], m["module"]))
+
+    return {
+        "cve": cve_id,
+        "searched": cve_id,
+        "exploit_modules_available": len(exploits),
+        "exploits": exploits,
+        "auxiliary_modules": auxiliary,
+        "note": (
+            "Exploit modules are listed for threat-intelligence purposes only; "
+            "this server never runs them."
+        ),
+    }
+
+
 __all__ = [
     "MsfConfig",
     "MsfToolError",
@@ -750,6 +830,7 @@ __all__ = [
     "DEFAULT_MODULE_PREFIXES",
     "auxiliary_info",
     "db_records",
+    "exploit_availability",
     "get_allowed_module_prefixes",
     "get_config",
     "is_module_allowed",

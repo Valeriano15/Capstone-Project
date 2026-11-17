@@ -139,7 +139,8 @@ class MockMsfrpcd(ThreadingHTTPServer):
         if method == "db.status":
             return {"driver": "postgresql", "db": "msf"}
         if method == "db.workspaces":
-            return {"workspaces": ["default"]}
+            # Real msfrpcd returns workspace objects, not bare name strings.
+            return {"workspaces": [{"name": "default"}]}
         if method == "db.hosts":
             return {
                 "hosts": [
@@ -164,6 +165,23 @@ class MockMsfrpcd(ThreadingHTTPServer):
             }
         if method == "module.search":
             self.last_search = request[2]
+            if "CVE" in request[2].upper():
+                return [
+                    {
+                        "type": "exploit",
+                        "name": "multi/http/log4shell_header_injection",
+                        "fullname": "exploit/multi/http/log4shell_header_injection",
+                        "rank": "excellent",
+                        "disclosuredate": "2021-12-09",
+                    },
+                    {
+                        "type": "auxiliary",
+                        "name": "scanner/http/log4shell_scanner",
+                        "fullname": "auxiliary/scanner/http/log4shell_scanner",
+                        "rank": "normal",
+                        "disclosuredate": "2021-12-09",
+                    },
+                ]
             return SEARCH_RESULTS
         if method == "module.info":
             return MODULE_INFO
@@ -284,6 +302,26 @@ class IntegrationTests(unittest.TestCase):
 
         vulns = msf.db_records("vulns")
         self.assertEqual(vulns["records"][0]["name"], "mock-vuln")
+
+    def test_db_reads_unknown_workspace_lists_available_names(self):
+        with self.assertRaises(msf.MsfToolError) as ctx:
+            msf.db_records("hosts", workspace="does-not-exist")
+        self.assertIn("does-not-exist", str(ctx.exception))
+        self.assertIn("default", str(ctx.exception))
+
+    def test_exploit_availability_reads_all_module_types(self):
+        result = msf.exploit_availability("CVE-2021-44228")
+        self.assertEqual(result["exploit_modules_available"], 1)
+        self.assertEqual(
+            result["exploits"][0]["module"],
+            "exploit/multi/http/log4shell_header_injection",
+        )
+        self.assertEqual(len(result["auxiliary_modules"]), 1)
+        self.assertTrue(result["auxiliary_modules"][0]["runnable_in_scope"])
+
+    def test_exploit_availability_rejects_bad_cve_format(self):
+        with self.assertRaises(msf.MsfToolError):
+            msf.exploit_availability("not-a-cve")
 
     def test_run_rejects_out_of_scope_target_over_real_transport(self):
         with self.assertRaises(msf.MsfToolError):

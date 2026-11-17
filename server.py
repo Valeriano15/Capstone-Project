@@ -16,6 +16,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+import intel_client as intel
 import msf_client as msf
 
 mcp = FastMCP("Metasploit Assessment Server")
@@ -131,6 +132,54 @@ def msf_db_services(workspace: str = "default", limit: int = 50) -> dict[str, An
 def msf_db_vulns(workspace: str = "default", limit: int = 50) -> dict[str, Any]:
     """List vulnerabilities recorded in the Metasploit database (read-only)."""
     return msf.db_records("vulns", workspace=workspace, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Threat intelligence (read-only, public feeds only)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def msf_cve_lookup(query: str, limit: int = 5) -> dict[str, Any]:
+    """Look up current threat intelligence for a CVE ID or a keyword.
+
+    Accepts a CVE ID such as "CVE-2021-44228" or a service/version keyword
+    such as "openssh 9.2p1" or "apache tomcat 9.0". For each finding this
+    returns the NVD description, CVSS base score/severity, weaknesses,
+    references, CISA KEV status (actively exploited in the wild, with
+    remediation due dates), and MITRE ATT&CK mappings (techniques, threat
+    actors, and software tied to the CVE, with citations).
+
+    Data comes from public feeds (NVD, CISA KEV, MITRE ATT&CK) and is cached
+    locally. Use msf_refresh_intel to force a feed refresh. Never touches
+    the scan target. Use msf_exploit_availability afterwards to check
+    whether public Metasploit modules exist for the CVEs found.
+    """
+    return intel.cve_lookup(query, limit=limit)
+
+
+@mcp.tool()
+def msf_exploit_availability(cve: str) -> dict[str, Any]:
+    """Check whether Metasploit has modules for a CVE (read-only).
+
+    Searches module metadata for exploit and auxiliary modules that
+    reference the CVE. This is an intelligence lookup only: exploit modules
+    are listed for awareness (and marked runnable_in_scope when an
+    in-scope auxiliary scanner exists) but this server never runs them.
+    """
+    return msf.exploit_availability(cve)
+
+
+@mcp.tool()
+def msf_refresh_intel(include_attack: bool = True) -> dict[str, Any]:
+    """Re-download the CISA KEV and MITRE ATT&CK intelligence feeds.
+
+    Returns the status of each feed refresh (ok/error), the catalog date,
+    and record counts. Call this before writing a report if the cached
+    feeds are older than a day (KEV) or a week (ATT&CK). The ATT&CK
+    bundle is large (~200 MB); skip it with include_attack=False.
+    """
+    return intel.refresh_intel(include_attack=include_attack)
 
 
 # ---------------------------------------------------------------------------

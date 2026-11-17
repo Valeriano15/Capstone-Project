@@ -1,12 +1,6 @@
-<<<<<<< HEAD
 # MCP config contains the msfrpcd password
 .mcp.json
 
-# Python
-.venv/
-__pycache__/
-*.py[cod]
-=======
 # Python
 __pycache__/
 *.py[cod]
@@ -25,4 +19,7 @@ venv/
 evidence/
 *.nmap
 *.xml.raw
->>>>>>> 828d3fca63d0fa51a90ffcb9a4ccc8e877866bd8
+
+# Local threat-intelligence cache and generated reports
+intel_cache/
+reports/

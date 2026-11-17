@@ -13,7 +13,8 @@
         "MSF_PASSWORD": "REPLACE_WITH_RPC_PASSWORD",
         "MSF_SSL": "true",
         "MSF_ALLOWED_TARGETS": "192.168.56.0/24",
-        "MSF_ALLOWED_MODULE_PREFIXES": "scanner/,gather/,analyze/"
+        "MSF_ALLOWED_MODULE_PREFIXES": "scanner/,gather/,analyze/",
+        "MSF_NVD_API_KEY": ""
       }
     }
   }
